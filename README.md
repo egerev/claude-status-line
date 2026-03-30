@@ -55,9 +55,9 @@ expected% = (elapsed_time / total_window) × 100%
 difference = used% - expected%
 ```
 
-- 🟢 Green: On track or under budget (difference ≤ 10%)
-- 🟡 Yellow: Slightly ahead of pace (difference ≤ 25%)
-- 🔴 Red: Burning too fast (difference > 25%)
+- 🟢 Green: On track or under budget
+- 🟡 Yellow: Any amount ahead of schedule
+- 🔴 Red: More than 20% ahead of schedule — burning too fast
 
 **Examples:**
 - 5h window, 4h elapsed, 80% used → 🟢 Green (expected: 80%, right on track)
