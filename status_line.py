@@ -60,8 +60,10 @@ CTX_YELLOW = 20
 CTX_RED = 40
 
 # Rate limit pacing thresholds (difference between used% and expected%)
-RATE_PACE_YELLOW = 10  # >10% ahead of schedule
-RATE_PACE_RED = 25     # >25% ahead of schedule
+# expected% = (elapsed_time / total_window) * 100
+# difference = used% - expected%
+RATE_PACE_YELLOW = 0   # any amount ahead of schedule → yellow
+RATE_PACE_RED = 20     # >20% ahead of schedule → red
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +85,7 @@ def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float 
     Green = on track or under budget. Yellow = slightly ahead. Red = burning fast.
     """
     if resets_at <= 0:
+        # No reset data — fall back to simple thresholds
         if used_pct < 50:
             return GREEN
         elif used_pct < 80:
@@ -97,7 +100,7 @@ def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float 
     total_window = window_hours * 3600
     elapsed = total_window - time_remaining
     if elapsed <= 0:
-        elapsed = 60
+        elapsed = 60  # just started
 
     expected_pct = (elapsed / total_window) * 100
     difference = used_pct - expected_pct
