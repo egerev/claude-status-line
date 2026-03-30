@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+
 """
 Status Line for Claude Code.
 
@@ -17,19 +22,12 @@ Data sources:
   - stdin JSON from Claude Code (model, context, tokens, cost, rate_limits)
   - .claude/data/sessions/{session_id}.json (created_at for duration)
   - ~/.claude/data/rate_history.jsonl (rate limit history for prompt estimates)
-
-Requires Python 3.9+ (stdlib only).
-
-Source: https://github.com/egerev/claude-status-line
 """
-
-from __future__ import annotations
 
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 sys.stdin.reconfigure(encoding="utf-8")
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -135,7 +133,7 @@ def progress_bar(pct: float, width: int = 10) -> str:
 # Session duration
 # ---------------------------------------------------------------------------
 
-def _find_session_file(session_id: str, workspace_dir: Optional[str] = None) -> Optional[Path]:
+def _find_session_file(session_id: str, workspace_dir: str | None = None) -> Path | None:
     """Find session file, checking CWD and workspace_dir."""
     candidates = [Path(".claude/data/sessions") / f"{session_id}.json"]
     if workspace_dir:
@@ -148,7 +146,7 @@ def _find_session_file(session_id: str, workspace_dir: Optional[str] = None) -> 
     return None
 
 
-def get_session_duration(session_id: str, workspace_dir: Optional[str] = None) -> Optional[float]:
+def get_session_duration(session_id: str, workspace_dir: str | None = None) -> float | None:
     session_file = _find_session_file(session_id, workspace_dir)
     if not session_file:
         return None
@@ -171,7 +169,7 @@ def get_session_duration(session_id: str, workspace_dir: Optional[str] = None) -
 RATE_HISTORY_FILE = Path.home() / ".claude" / "data" / "rate_history.jsonl"
 
 
-def record_rate_snapshot(data: dict, prompt_count: Optional[int]) -> None:
+def record_rate_snapshot(data: dict, prompt_count: int | None) -> None:
     """Append rate limits to history, once per prompt (keyed by prompt_count)."""
     rate_limits = data.get("rate_limits")
     if not rate_limits or not prompt_count:
@@ -213,7 +211,7 @@ def record_rate_snapshot(data: dict, prompt_count: Optional[int]) -> None:
         pass
 
 
-def _load_rate_entries() -> Optional[list[dict]]:
+def _load_rate_entries() -> list[dict] | None:
     """Load parsed entries from rate_history.jsonl."""
     if not RATE_HISTORY_FILE.exists():
         return None
@@ -232,7 +230,7 @@ def _load_rate_entries() -> Optional[list[dict]]:
         return None
 
 
-def estimate_remaining_prompts(current_pct: float, key: str = "5h_pct") -> Optional[int]:
+def estimate_remaining_prompts(current_pct: float, key: str = "5h_pct") -> int | None:
     """Estimate remaining prompts for a given rate limit.
 
     Groups entries by session, calculates per-session delta (last - first pct)

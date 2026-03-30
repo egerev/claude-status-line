@@ -14,8 +14,8 @@ A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) 
 | **Context** | `1M [██░░░░░░░░] 6% ~192p` | Context window size, usage bar, % used, estimated prompts remaining |
 | **Cache** | `Cache:99%` | Prompt cache hit rate (green ≥80%, yellow ≥50%, red <50%) |
 | **Duration** | `⏱ 25m` | How long the current session has been running |
-| **5h Limit** | `5h [█░░░░░░░░░] 8%` | 5-hour sliding window rate limit usage |
-| **7d Limit** | `7d [█████████░] 91% ~9p ↻3h` | 7-day rate limit with remaining prompts estimate and reset timer |
+| **5h Limit** | `5h [█░░░░░░░░░] 8% ↻4h` | 5-hour rate limit usage with reset timer |
+| **7d Limit** | `7d [█████████░] 91% ~9p ↻3d` | 7-day rate limit with remaining prompts estimate and reset timer |
 
 ## Metrics explained
 
