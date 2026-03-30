@@ -44,12 +44,26 @@ Shows what percentage of input tokens came from cache vs. being processed fresh.
 - **5-hour limit**: Resets every ~5 hours on a fixed timer
 - **7-day limit**: Resets every ~7 days on a fixed timer
 
-`↻` always shows the time until the limit resets to zero. `~Np` only appears when yellow or red (≥50% used).
+`↻` always shows the time until the limit resets to zero. `~Np` only appears when yellow or red.
 
-**Color thresholds:**
-- 🟢 <50% — Plenty of room
-- 🟡 50-80% — Getting there
-- 🔴 >80% — Running low
+**Smart pacing colors:**
+
+Colors aren't based on simple percentage thresholds — they're based on whether you're **ahead of schedule** or not. The status line compares your actual usage to where you *should* be if you spread usage evenly across the window:
+
+```
+expected% = (elapsed_time / total_window) × 100%
+difference = used% - expected%
+```
+
+- 🟢 Green: On track or under budget (difference ≤ 10%)
+- 🟡 Yellow: Slightly ahead of pace (difference ≤ 25%)
+- 🔴 Red: Burning too fast (difference > 25%)
+
+**Examples:**
+- 5h window, 4h elapsed, 80% used → 🟢 Green (expected: 80%, right on track)
+- 5h window, 1h elapsed, 80% used → 🔴 Red (expected: 20%, way ahead)
+- 7d window, 2d elapsed, 30% used → 🟢 Green (expected: 29%, perfect)
+- 7d window, 1d elapsed, 60% used → 🔴 Red (expected: 14%, burning fast)
 
 ### How prompt estimation works
 

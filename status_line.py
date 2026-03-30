@@ -59,9 +59,9 @@ EMPTY = "\u2591"   # ░
 CTX_YELLOW = 20
 CTX_RED = 40
 
-# Rate limit thresholds
-RATE_YELLOW = 50
-RATE_RED = 80
+# Rate limit pacing thresholds (difference between used% and expected%)
+RATE_PACE_YELLOW = 10  # >10% ahead of schedule
+RATE_PACE_RED = 25     # >25% ahead of schedule
 
 
 # ---------------------------------------------------------------------------
@@ -76,21 +76,45 @@ def ctx_color(pct: float) -> str:
     return RED
 
 
-def rate_color(pct: float) -> str:
-    if pct < RATE_YELLOW:
+def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float = 5) -> str:
+    """Color based on pacing — are you burning faster than sustainable?
+
+    Compares actual usage to expected linear usage based on elapsed time.
+    Green = on track or under budget. Yellow = slightly ahead. Red = burning fast.
+    """
+    if resets_at <= 0:
+        if used_pct < 50:
+            return GREEN
+        elif used_pct < 80:
+            return YELLOW
+        return RED
+
+    now = datetime.now(timezone.utc).timestamp()
+    time_remaining = resets_at - now
+    if time_remaining <= 0:
+        return GREEN  # about to reset
+
+    total_window = window_hours * 3600
+    elapsed = total_window - time_remaining
+    if elapsed <= 0:
+        elapsed = 60
+
+    expected_pct = (elapsed / total_window) * 100
+    difference = used_pct - expected_pct
+
+    if difference <= RATE_PACE_YELLOW:
         return GREEN
-    elif pct < RATE_RED:
+    elif difference <= RATE_PACE_RED:
         return YELLOW
     return RED
 
 
-def rate_bar(pct: float, width: int = 10) -> str:
+def rate_bar(pct: float, color: str, width: int = 10) -> str:
     """Short progress bar for rate limits."""
     filled = int((pct / 100) * width)
     if pct > 0 and filled == 0:
         filled = 1  # show at least 1 block when not zero
     empty = width - filled
-    color = rate_color(pct)
     return f"{color}{FILLED * filled}{DIM}{EMPTY * empty}{RESET}"
 
 
@@ -390,31 +414,31 @@ def generate(data: dict) -> str:
         lim_parts = []
 
         if fh_pct is not None:
-            fc = rate_color(fh_pct)
-            bar = rate_bar(fh_pct)
+            fh_resets = five_hour.get("resets_at", 0)
+            fc = rate_color_paced(fh_pct, fh_resets, window_hours=5)
+            bar = rate_bar(fh_pct, fc)
             lim_str = f"{BRIGHT_WHITE}5h{RESET} {bar} {fc}{fh_pct:.0f}%{RESET}"
-            if fh_pct >= RATE_YELLOW:
+            if fc != GREEN:
                 est = estimate_remaining_prompts(fh_pct, "5h_pct")
                 if est is not None:
                     lim_str += f" {BRIGHT_WHITE}~{est}p{RESET}"
-            resets_at = five_hour.get("resets_at")
-            if resets_at:
-                reset_in = resets_at - datetime.now(timezone.utc).timestamp()
+            if fh_resets:
+                reset_in = fh_resets - datetime.now(timezone.utc).timestamp()
                 if reset_in > 0:
                     lim_str += f" {CYAN}\u21bb{fmt_duration(reset_in)}{RESET}"
             lim_parts.append(lim_str)
 
         if sd_pct is not None:
-            sc = rate_color(sd_pct)
-            bar = rate_bar(sd_pct)
+            sd_resets = seven_day.get("resets_at", 0)
+            sc = rate_color_paced(sd_pct, sd_resets, window_hours=168)
+            bar = rate_bar(sd_pct, sc)
             lim_str = f"{BRIGHT_WHITE}7d{RESET} {bar} {sc}{sd_pct:.0f}%{RESET}"
-            if sd_pct >= RATE_YELLOW:
+            if sc != GREEN:
                 est = estimate_remaining_prompts(sd_pct, "7d_pct")
                 if est is not None:
                     lim_str += f" {BRIGHT_WHITE}~{est}p{RESET}"
-            resets_at = seven_day.get("resets_at")
-            if resets_at:
-                reset_in = resets_at - datetime.now(timezone.utc).timestamp()
+            if sd_resets:
+                reset_in = sd_resets - datetime.now(timezone.utc).timestamp()
                 if reset_in > 0:
                     lim_str += f" {CYAN}\u21bb{fmt_duration(reset_in)}{RESET}"
             lim_parts.append(lim_str)
