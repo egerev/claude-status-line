@@ -3,7 +3,7 @@
 A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) that shows everything you need at a glance.
 
 ```
-[Opus 4.6 · high] | 1M [██░░░░░░░░] 6% ~192p | Cache:99% | ⏱ 25m | 5h [█░░░░░░░░░] 8% · 7d [█████████░] 91% ~9p ↻3h
+[Opus 4.6 · high] git-branch-name | 1M [██░░░░░░░░] 6% ~192p | Cache:99% | ⏱ 25m | 5h [█░░░░░░░░░] 8% · 7d [█████████░] 91% ~9p ↻3h
 ```
 
 ## What it shows
@@ -11,6 +11,7 @@ A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) 
 | Segment | Example | Description |
 |---------|---------|-------------|
 | **Model** | `[Opus 4.6 · high]` | Active model + reasoning effort level |
+| **Git branch** | `git-branch-name` | Current git branch |
 | **Context** | `1M [██░░░░░░░░] 6% ~192p` | Context window size, usage bar, % used, estimated prompts remaining |
 | **Cache** | `Cache:99%` | Prompt cache hit rate (green ≥80%, yellow ≥50%, red <50%) |
 | **Duration** | `⏱ 25m` | How long the current session has been running |

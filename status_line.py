@@ -8,15 +8,16 @@
 Status Line for Claude Code.
 
 Format:
-  [Opus 4.6] | [████░░░░] 6% ~14 left | In:64k Out:14k | Cache:85% | ⏱ 25m | 5h:8% · 7d:89% ~14p
+  [Opus 4.6] git-branch-name | [████░░░░] 6% ~14 left | In:64k Out:14k | Cache:85% | ⏱ 25m | 5h:8% · 7d:89% ~14p
 
 Segments:
   1. Model name
-  2. Context bar + % + estimated prompts left
-  3. In/Out tokens
-  4. Cache hit %
-  5. Session duration
-  6. Rate limits (5h / 7d) with color + estimated prompts remaining
+  2. Git branch name
+  3. Context bar + % + estimated prompts left
+  4. In/Out tokens
+  5. Cache hit %
+  6. Session duration
+  7. Rate limits (5h / 7d) with color + estimated prompts remaining
 
 Data sources:
   - stdin JSON from Claude Code (model, context, tokens, cost, rate_limits)
@@ -25,6 +26,7 @@ Data sources:
 """
 
 import json
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -335,6 +337,21 @@ def generate(data: dict) -> str:
     if effort:
         model_str += f" \u00b7 {effort}"
     model_str += f"]{RESET}"
+
+    # Branch name from workspace dir
+    ws = data.get("workspace") or {}
+    cwd = ws.get("current_dir") or ws.get("project_dir") or ""
+    if cwd:
+        try:
+            branch = subprocess.run(
+                ["git", "-C", cwd, "--no-optional-locks", "symbolic-ref", "--short", "HEAD"],
+                capture_output=True, text=True, timeout=2,
+            ).stdout.strip()
+            if branch:
+                model_str += f" {DIM}{branch}{RESET}"
+        except Exception:
+            pass
+
     parts.append(model_str)
 
     # 2. Context bar + % + estimated turns left
