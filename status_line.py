@@ -348,10 +348,20 @@ def generate(data: dict) -> str:
                 capture_output=True, text=True, timeout=2,
             ).stdout.strip()
             if branch:
+                BRANCH_ICONS = {
+                    "feat": ("\U0001F680", CYAN),       # 🚀
+                    "fix": ("\U0001F41B", YELLOW),       # 🐛
+                    "chore": ("\U0001F527", DIM),        # 🔧
+                    "refactor": ("\u267B\uFE0F", BRIGHT_MAGENTA),  # ♻️
+                    "docs": ("\U0001F4DD", DIM),         # 📝
+                }
                 if branch in ("main", "master"):
-                    model_str += f" {DIM}\ue0a0{branch}{RESET}"
+                    model_str += f" \U0001F451 {DIM}{branch}{RESET}"  # 👑
                 else:
-                    model_str += f" {CYAN}\ue0a0{branch}{RESET}"
+                    prefix = branch.split("/")[0] if "/" in branch else ""
+                    icon, color = BRANCH_ICONS.get(prefix, ("\ue0a0", BRIGHT_WHITE))
+                    short = branch.split("/", 1)[1] if "/" in branch else branch
+                    model_str += f" {icon} {color}{short}{RESET}"
         except Exception:
             pass
 
