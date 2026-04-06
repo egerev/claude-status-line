@@ -415,7 +415,11 @@ def generate(data: dict) -> str:
             cc = YELLOW
         else:
             cc = RED
-        parts.append(f"{BRIGHT_WHITE}Cache:{RESET}{cc}{hit_pct:.0f}%{RESET}")
+        uncached = plain_input + cache_write  # tokens not served from cache
+        cache_str = f"{BRIGHT_WHITE}Cache:{RESET}{cc}{hit_pct:.0f}%{RESET}"
+        if uncached > 0:
+            cache_str += f" {DIM}{fmt_tokens(uncached)}miss{RESET}"
+        parts.append(cache_str)
 
     # 5. Session duration
     if session_id:
