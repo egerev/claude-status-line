@@ -3,7 +3,7 @@
 A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) that shows everything you need at a glance.
 
 ```
-[Opus 4.6 · high] 🚀 crystal-buffer | 1M [██░░░░░░░░] 6% ~192p | Cache:99% | ⏱ 25m | 5h [█░░░░░░░░░] 8% · 7d [█████████░] 91% ~9p ↻3h
+[Opus 4.6 · high] 🚀 my-feature | 1M [██░░░░░░░░] 6% ~192p | Cache:99% | ⏱ 25m | 5h [█░░░░░░░░░] 8% · 7d [█████████░] 91% ~9p ↻3h
 ```
 
 ## What it shows
@@ -11,7 +11,7 @@ A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) 
 | Segment | Example | Description |
 |---------|---------|-------------|
 | **Model** | `[Opus 4.6 · high]` | Active model + reasoning effort level |
-| **Git branch** | `🚀 crystal-buffer` | Current git branch with type emoji (see below) |
+| **Git branch** | `🚀 my-feature` | Current git branch with type emoji (see below) |
 | **Context** | `1M [██░░░░░░░░] 6% ~192p` | Context window size, usage bar, % used, estimated prompts remaining |
 | **Cache** | `Cache:99%` | Prompt cache hit rate (green ≥80%, yellow ≥50%, red <50%) |
 | **Duration** | `⏱ 25m` | How long the current session has been running |
@@ -140,7 +140,7 @@ The branch prefix (`feat/`, `fix/`, etc.) is replaced with an emoji for compact 
 | `main` | 👑 | Main branch |
 | other | `` | Default branch icon |
 
-Example: `feat/crystal-buffer-wiring` → `🚀 crystal-buffer-wiring`
+Example: `feat/my-feature` → `🚀 my-feature`
 
 ### Add/remove segments
 Each segment is added via `parts.append(...)` in the `generate()` function. Comment out or rearrange as needed.
