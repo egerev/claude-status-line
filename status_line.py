@@ -348,7 +348,10 @@ def generate(data: dict) -> str:
                 capture_output=True, text=True, timeout=2,
             ).stdout.strip()
             if branch:
-                model_str += f" {DIM}{branch}{RESET}"
+                if branch in ("main", "master"):
+                    model_str += f" {DIM}\ue0a0{branch}{RESET}"
+                else:
+                    model_str += f" {CYAN}\ue0a0{branch}{RESET}"
         except Exception:
             pass
 
@@ -415,11 +418,7 @@ def generate(data: dict) -> str:
             cc = YELLOW
         else:
             cc = RED
-        uncached = plain_input + cache_write  # tokens not served from cache
-        cache_str = f"{BRIGHT_WHITE}Cache:{RESET}{cc}{hit_pct:.0f}%{RESET}"
-        if uncached > 0:
-            cache_str += f" {DIM}{fmt_tokens(uncached)}miss{RESET}"
-        parts.append(cache_str)
+        parts.append(f"{BRIGHT_WHITE}Cache:{RESET}{cc}{hit_pct:.0f}%{RESET}")
 
     # 5. Session duration
     if session_id:
