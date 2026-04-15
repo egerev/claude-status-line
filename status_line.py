@@ -26,6 +26,7 @@ Data sources:
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -85,7 +86,11 @@ def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float 
 
     Compares actual usage to expected linear usage based on elapsed time.
     Green = on track or under budget. Yellow = slightly ahead. Red = burning fast.
+    At 100% the limit is exhausted — always red regardless of pacing.
     """
+    if used_pct >= 100:
+        return RED
+
     if resets_at <= 0:
         # No reset data — fall back to simple thresholds
         if used_pct < 50:
@@ -156,6 +161,39 @@ def progress_bar(pct: float, width: int = 10) -> str:
     empty = width - filled
     color = ctx_color(pct)
     return f"{color}{FILLED * filled}{DIM}{EMPTY * empty}{RESET}"
+
+
+# ---------------------------------------------------------------------------
+# Settings / env lookup
+# ---------------------------------------------------------------------------
+
+_SETTINGS_ENV_CACHE: dict | None = None
+
+
+def _settings_env() -> dict:
+    """Load env block from ~/.claude/settings.json (cached per process)."""
+    global _SETTINGS_ENV_CACHE
+    if _SETTINGS_ENV_CACHE is not None:
+        return _SETTINGS_ENV_CACHE
+    try:
+        settings_file = Path.home() / ".claude" / "settings.json"
+        if settings_file.exists():
+            data = json.loads(settings_file.read_text(encoding="utf-8"))
+            _SETTINGS_ENV_CACHE = data.get("env", {}) or {}
+            return _SETTINGS_ENV_CACHE
+    except Exception:
+        pass
+    _SETTINGS_ENV_CACHE = {}
+    return _SETTINGS_ENV_CACHE
+
+
+def _get_env(key: str) -> str | None:
+    """Read an env var from process env, falling back to settings.json env block."""
+    val = os.environ.get(key)
+    if val:
+        return val
+    val = _settings_env().get(key)
+    return val if val else None
 
 
 # ---------------------------------------------------------------------------
@@ -315,13 +353,16 @@ def generate(data: dict) -> str:
     # Clean up verbose display name: "Opus 4.6 (1M context)" → "Opus 4.6"
     if "(" in model:
         model = model[:model.index("(")].strip()
-    effort = None
-    try:
-        settings_file = Path.home() / ".claude" / "settings.json"
-        if settings_file.exists():
-            effort = json.loads(settings_file.read_text(encoding="utf-8")).get("effortLevel")
-    except Exception:
-        pass
+    # Reasoning effort: prefer CLAUDE_CODE_EFFORT_LEVEL (env var or settings.json env
+    # block); fall back to legacy top-level "effortLevel" key in settings.json.
+    effort = _get_env("CLAUDE_CODE_EFFORT_LEVEL")
+    if not effort:
+        try:
+            settings_file = Path.home() / ".claude" / "settings.json"
+            if settings_file.exists():
+                effort = json.loads(settings_file.read_text(encoding="utf-8")).get("effortLevel")
+        except Exception:
+            pass
     # Model color: more powerful = more aggressive
     model_lower = model.lower()
     if "opus" in model_lower:
@@ -359,7 +400,7 @@ def generate(data: dict) -> str:
                     model_str += f" \U0001F451 {DIM}{branch}{RESET}"  # 👑
                 else:
                     prefix = branch.split("/")[0] if "/" in branch else ""
-                    icon, color = BRANCH_ICONS.get(prefix, ("\ue0a0", BRIGHT_WHITE))
+                    icon, color = BRANCH_ICONS.get(prefix, ("\U0001F4CC", BRIGHT_WHITE))  # 📌
                     short = branch.split("/", 1)[1] if "/" in branch else branch
                     model_str += f" {icon} {color}{short}{RESET}"
         except Exception:
@@ -370,24 +411,43 @@ def generate(data: dict) -> str:
     # 2. Context bar + % + estimated turns left
     ctx = data.get("context_window") or {}
     used_pct = ctx.get("used_percentage", 0) or 0
-    bar = progress_bar(used_pct)
-    color = ctx_color(used_pct)
 
-    # Context window size label (1000000 → "1M")
+    # Context window size from stdin (typically 1M for Opus 4.6 1M context)
     window_size_raw = ctx.get("context_window_size", 1000000) or 1000000
-    if window_size_raw >= 1000000:
-        ctx_label = f"{window_size_raw // 1000000}M"
-    else:
-        ctx_label = f"{window_size_raw // 1000}K"
-    ctx_str = f"{BRIGHT_WHITE}{ctx_label}{RESET} {bar} {color}{used_pct:.0f}%{RESET}"
 
-    # Estimate context turns left (rough: based on avg input per turn)
+    # Current token usage (reused below for turns_left and cache stats)
     current = ctx.get("current_usage") or {}
     total_in = (
         (current.get("input_tokens", 0) or 0)
         + (current.get("cache_creation_input_tokens", 0) or 0)
         + (current.get("cache_read_input_tokens", 0) or 0)
     )
+
+    # Override with auto-compact window if user has set it lower than the native
+    # context (CLAUDE_CODE_AUTO_COMPACT_WINDOW triggers compaction earlier).
+    # Backward compat: if the env var is not set, stdin values are used as-is.
+    override_raw = _get_env("CLAUDE_CODE_AUTO_COMPACT_WINDOW")
+    if override_raw:
+        try:
+            override_size = int(override_raw)
+            if 0 < override_size < window_size_raw:
+                window_size_raw = override_size
+                # Recalculate percentage against the effective (smaller) window
+                if total_in > 0:
+                    used_pct = min(100.0, (total_in / window_size_raw) * 100)
+        except ValueError:
+            pass
+
+    bar = progress_bar(used_pct)
+    color = ctx_color(used_pct)
+
+    # Context window size label (1000000 → "1M", 400000 → "400K")
+    if window_size_raw >= 1000000:
+        ctx_label = f"{window_size_raw // 1000000}M"
+    else:
+        ctx_label = f"{window_size_raw // 1000}K"
+    ctx_str = f"{BRIGHT_WHITE}{ctx_label}{RESET} {bar} {color}{used_pct:.0f}%{RESET}"
+
     window_size = window_size_raw
 
     # Get prompt count from session file
