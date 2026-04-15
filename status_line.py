@@ -53,14 +53,19 @@ FILLED = "\u2588"  # █
 EMPTY = "\u2591"   # ░
 
 # ---------------------------------------------------------------------------
-# Context thresholds (based on degradation research for complex tasks)
+# Context thresholds — absolute tokens (not % of window)
 # ---------------------------------------------------------------------------
-# Green: 0-20% (0-200K) — safe, no degradation
-# Yellow: 20-40% (200K-400K) — some degradation on complex tasks
-# Red: 40%+ (400K+) — significant degradation, consider /clear
+# Based on model degradation research: quality drops depend on absolute
+# token count, not on how full the effective window is. This keeps color
+# signals meaningful when users cap CLAUDE_CODE_AUTO_COMPACT_WINDOW below
+# the native context size.
+#
+# Green: <200K tokens — safe, no degradation
+# Yellow: 200K–400K tokens — some degradation on complex tasks
+# Red: 400K+ tokens — significant degradation, consider /clear
 
-CTX_YELLOW = 20
-CTX_RED = 40
+CTX_YELLOW_TOKENS = 200_000
+CTX_RED_TOKENS = 400_000
 
 # Rate limit pacing thresholds (difference between used% and expected%)
 # expected% = (elapsed_time / total_window) * 100
@@ -73,10 +78,12 @@ RATE_PACE_RED = 20     # >20% ahead of schedule → red
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
-def ctx_color(pct: float) -> str:
-    if pct < CTX_YELLOW:
+def ctx_color(tokens: int) -> str:
+    """Color context bar by absolute token count (not %), since model
+    degradation thresholds depend on tokens, not on effective window size."""
+    if tokens < CTX_YELLOW_TOKENS:
         return GREEN
-    elif pct < CTX_RED:
+    elif tokens < CTX_RED_TOKENS:
         return YELLOW
     return RED
 
@@ -156,10 +163,12 @@ def fmt_duration(seconds: float) -> str:
         return f"{d}d{h}h" if h else f"{d}d"
 
 
-def progress_bar(pct: float, width: int = 10) -> str:
+def progress_bar(pct: float, tokens: int, width: int = 10) -> str:
+    """Draw a progress bar. Width is based on % fill of the effective window;
+    color is based on absolute token count (degradation thresholds)."""
     filled = int((pct / 100) * width)
     empty = width - filled
-    color = ctx_color(pct)
+    color = ctx_color(tokens)
     return f"{color}{FILLED * filled}{DIM}{EMPTY * empty}{RESET}"
 
 
@@ -438,8 +447,8 @@ def generate(data: dict) -> str:
         except ValueError:
             pass
 
-    bar = progress_bar(used_pct)
-    color = ctx_color(used_pct)
+    bar = progress_bar(used_pct, total_in)
+    color = ctx_color(total_in)
 
     # Context window size label (1000000 → "1M", 400000 → "400K")
     if window_size_raw >= 1000000:
