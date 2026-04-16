@@ -27,6 +27,7 @@ Data sources:
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -176,24 +177,16 @@ def progress_bar(pct: float, tokens: int, width: int = 10) -> str:
 # Settings / env lookup
 # ---------------------------------------------------------------------------
 
-_SETTINGS_ENV_CACHE: dict | None = None
-
-
 def _settings_env() -> dict:
-    """Load env block from ~/.claude/settings.json (cached per process)."""
-    global _SETTINGS_ENV_CACHE
-    if _SETTINGS_ENV_CACHE is not None:
-        return _SETTINGS_ENV_CACHE
+    """Load env block from ~/.claude/settings.json (fresh every call)."""
     try:
         settings_file = Path.home() / ".claude" / "settings.json"
         if settings_file.exists():
             data = json.loads(settings_file.read_text(encoding="utf-8"))
-            _SETTINGS_ENV_CACHE = data.get("env", {}) or {}
-            return _SETTINGS_ENV_CACHE
+            return data.get("env", {}) or {}
     except Exception:
         pass
-    _SETTINGS_ENV_CACHE = {}
-    return _SETTINGS_ENV_CACHE
+    return {}
 
 
 def _get_env(key: str) -> str | None:
@@ -203,6 +196,56 @@ def _get_env(key: str) -> str | None:
         return val
     val = _settings_env().get(key)
     return val if val else None
+
+
+# ---------------------------------------------------------------------------
+# Runtime effort from transcript
+# ---------------------------------------------------------------------------
+
+# Matches: "Set model to ... with <effort> effort" after stripping ANSI
+_MODEL_SET_RE = re.compile(r"Set model to .+ with (\w+) effort")
+
+
+def _effort_from_transcript(transcript_path: str | None) -> str | None:
+    """Parse the most recent /model command output from the session transcript.
+
+    The transcript is JSONL. /model writes entries with content like:
+      "<local-command-stdout>Set model to ... with max effort</local-command-stdout>"
+
+    Strategy: grep finds JSONL lines with the right tag, then we JSON-parse
+    the last match and extract effort from the decoded content string.
+    """
+    if not transcript_path:
+        return None
+    try:
+        p = Path(transcript_path)
+        if not p.exists():
+            return None
+        # Find JSONL lines that are actual /model output (not code/comments)
+        result = subprocess.run(
+            ["grep", "local-command-stdout>Set model to", str(p)],
+            capture_output=True, text=True, timeout=2,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        # Take the last matching JSONL line, parse as JSON to get clean content
+        lines = result.stdout.strip().split("\n")
+        for line in reversed(lines):
+            try:
+                entry = json.loads(line)
+                content = entry.get("message", {}).get("content", "")
+                if not isinstance(content, str):
+                    continue
+                # Content is decoded — ANSI escapes are real bytes now
+                clean = re.sub(r"\x1b\[[0-9;]*m", "", content)
+                m = _MODEL_SET_RE.search(clean)
+                if m:
+                    return m.group(1)
+            except (json.JSONDecodeError, AttributeError):
+                continue
+    except Exception:
+        pass
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -362,9 +405,11 @@ def generate(data: dict) -> str:
     # Clean up verbose display name: "Opus 4.6 (1M context)" → "Opus 4.6"
     if "(" in model:
         model = model[:model.index("(")].strip()
-    # Reasoning effort: prefer CLAUDE_CODE_EFFORT_LEVEL (env var or settings.json env
-    # block); fall back to legacy top-level "effortLevel" key in settings.json.
-    effort = _get_env("CLAUDE_CODE_EFFORT_LEVEL")
+    # Reasoning effort: 1) parse from transcript (actual runtime value after /model),
+    # 2) fall back to CLAUDE_CODE_EFFORT_LEVEL env/settings, 3) legacy effortLevel key.
+    effort = _effort_from_transcript(data.get("transcript_path"))
+    if not effort:
+        effort = _get_env("CLAUDE_CODE_EFFORT_LEVEL")
     if not effort:
         try:
             settings_file = Path.home() / ".claude" / "settings.json"
