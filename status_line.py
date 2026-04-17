@@ -204,12 +204,18 @@ def _get_env(key: str) -> str | None:
 
 # Matches: "Set model to ... with <effort> effort" after stripping ANSI
 _MODEL_SET_RE = re.compile(r"Set model to .+ with (\w+) effort")
+# Also matches: "Kept model as ... with <effort> effort"
+_MODEL_KEPT_RE = re.compile(r"Kept model as .+ with (\w+) effort")
 
 
 def _effort_from_transcript(transcript_path: str | None) -> str | None:
     """Parse the most recent /model command output from the session transcript.
 
-    The transcript is JSONL. /model writes entries with content like:
+    The transcript is JSONL. /model writes entries in two formats:
+      - assistant message: entry["message"]["content"] (old format)
+      - system local_command: entry["content"] (new format since ~2.1.x)
+
+    Content looks like:
       "<local-command-stdout>Set model to ... with max effort</local-command-stdout>"
 
     Strategy: grep finds JSONL lines with the right tag, then we JSON-parse
@@ -222,8 +228,9 @@ def _effort_from_transcript(transcript_path: str | None) -> str | None:
         if not p.exists():
             return None
         # Find JSONL lines that are actual /model output (not code/comments)
+        # Match both "Set model to" and "Kept model as"
         result = subprocess.run(
-            ["grep", "local-command-stdout>Set model to", str(p)],
+            ["grep", "-E", "local-command-stdout>(Set model to|Kept model as)", str(p)],
             capture_output=True, text=True, timeout=2,
         )
         if result.returncode != 0 or not result.stdout.strip():
@@ -233,12 +240,19 @@ def _effort_from_transcript(transcript_path: str | None) -> str | None:
         for line in reversed(lines):
             try:
                 entry = json.loads(line)
-                content = entry.get("message", {}).get("content", "")
+                # New format: system entries have "content" directly
+                # Old format: assistant entries have "message.content"
+                content = entry.get("content", "")
+                if not content or not isinstance(content, str):
+                    msg = entry.get("message")
+                    if isinstance(msg, dict):
+                        content = msg.get("content", "")
                 if not isinstance(content, str):
                     continue
                 # Content is decoded — ANSI escapes are real bytes now
                 clean = re.sub(r"\x1b\[[0-9;]*m", "", content)
-                m = _MODEL_SET_RE.search(clean)
+                # Try both patterns
+                m = _MODEL_SET_RE.search(clean) or _MODEL_KEPT_RE.search(clean)
                 if m:
                     return m.group(1)
             except (json.JSONDecodeError, AttributeError):
