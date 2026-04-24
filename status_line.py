@@ -206,17 +206,20 @@ def _get_env(key: str) -> str | None:
 _MODEL_SET_RE = re.compile(r"Set model to .+ with (\w+) effort")
 # Also matches: "Kept model as ... with <effort> effort"
 _MODEL_KEPT_RE = re.compile(r"Kept model as .+ with (\w+) effort")
+# Matches: "Set effort level to max (this session only): ..."
+_EFFORT_SET_RE = re.compile(r"Set effort (?:level )?to ([\w-]+)\b")
 
 
 def _effort_from_transcript(transcript_path: str | None) -> str | None:
     """Parse the most recent /model command output from the session transcript.
 
-    The transcript is JSONL. /model writes entries in two formats:
+    The transcript is JSONL. /model and /effort write entries in a few formats:
       - assistant message: entry["message"]["content"] (old format)
       - system local_command: entry["content"] (new format since ~2.1.x)
 
     Content looks like:
       "<local-command-stdout>Set model to ... with max effort</local-command-stdout>"
+      "<local-command-stdout>Set effort level to max (this session only): ...</local-command-stdout>"
 
     Strategy: grep finds JSONL lines with the right tag, then we JSON-parse
     the last match and extract effort from the decoded content string.
@@ -227,10 +230,9 @@ def _effort_from_transcript(transcript_path: str | None) -> str | None:
         p = Path(transcript_path)
         if not p.exists():
             return None
-        # Find JSONL lines that are actual /model output (not code/comments)
-        # Match both "Set model to" and "Kept model as"
+        # Find JSONL lines that are actual /model or /effort output (not code/comments).
         result = subprocess.run(
-            ["grep", "-E", "local-command-stdout>(Set model to|Kept model as)", str(p)],
+            ["grep", "-E", "local-command-stdout>(Set model to|Kept model as|Set effort)", str(p)],
             capture_output=True, text=True, timeout=2,
         )
         if result.returncode != 0 or not result.stdout.strip():
@@ -251,8 +253,11 @@ def _effort_from_transcript(transcript_path: str | None) -> str | None:
                     continue
                 # Content is decoded — ANSI escapes are real bytes now
                 clean = re.sub(r"\x1b\[[0-9;]*m", "", content)
-                # Try both patterns
-                m = _MODEL_SET_RE.search(clean) or _MODEL_KEPT_RE.search(clean)
+                m = (
+                    _MODEL_SET_RE.search(clean)
+                    or _MODEL_KEPT_RE.search(clean)
+                    or _EFFORT_SET_RE.search(clean)
+                )
                 if m:
                     return m.group(1)
             except (json.JSONDecodeError, AttributeError):
