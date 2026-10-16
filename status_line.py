@@ -11,7 +11,7 @@ Format:
   [Opus 4.6] git-branch-name | [████░░░░] 6% ~14 left | In:64k Out:14k | Cache:85% | ⏱ 25m | 5h:8% · 7d:89% ~14p
 
 Segments:
-  1. Model name (⚡ prefix when fast mode is on) + reasoning effort
+  1. Model name (↯ prefix when fast mode is on) + reasoning effort
   2. Git branch name
   3. Context bar + % + estimated prompts left
   4. In/Out tokens
@@ -443,7 +443,7 @@ def generate(data: dict) -> str:
         mc = BRIGHT_WHITE
 
     # Fast mode: stdin "fast_mode" reflects the current session state
-    fast = "\u26a1" if data.get("fast_mode") else ""  # ⚡
+    fast = "\u21af" if data.get("fast_mode") else ""  # ↯
     model_str = f"{mc}[{fast}{model}"
     if effort:
         model_str += f" \u00b7 {effort}"
