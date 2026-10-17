@@ -61,12 +61,12 @@ EMPTY = "\u2591"   # ░
 # signals meaningful when users cap CLAUDE_CODE_AUTO_COMPACT_WINDOW below
 # the native context size.
 #
-# Green: <200K tokens — safe, no degradation
-# Yellow: 200K–400K tokens — some degradation on complex tasks
-# Red: 400K+ tokens — significant degradation, consider /clear
+# Green: <300K tokens — safe, no degradation
+# Yellow: 300K–600K tokens — some degradation on complex tasks
+# Red: 600K+ tokens — significant degradation, consider /clear
 
-CTX_YELLOW_TOKENS = 200_000
-CTX_RED_TOKENS = 400_000
+CTX_YELLOW_TOKENS = 300_000
+CTX_RED_TOKENS = 600_000
 
 # Rate limit pacing thresholds (difference between used% and expected%)
 # expected% = (elapsed_time / total_window) * 100
