@@ -23,10 +23,10 @@ A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) 
 ### Context window (`~192p`)
 Estimates how many more prompts fit before the context window is full. Based on your average token consumption per prompt in the current session. Resets with each new session.
 
-**Color thresholds** (based on [MRCR v2 benchmarks](https://x.com/rohanpaul_ai/status/2019545018051240059) and [context rot research](https://www.trychroma.com/research/context-rot)):
-- 🟢 Green (0-20%): ~93%+ accuracy, no meaningful degradation
-- 🟡 Yellow (20-40%): ~89-93% accuracy, mild degradation on complex reasoning
-- 🔴 Red (40%+): Below ~89%, significant degradation, consider `/clear`
+**Color thresholds** — by absolute tokens, not % of window (based on [MRCR v2 benchmarks](https://x.com/rohanpaul_ai/status/2019545018051240059) and [context rot research](https://www.trychroma.com/research/context-rot)):
+- 🟢 Green (<300K): no meaningful degradation
+- 🟡 Yellow (300K–600K): mild degradation on complex reasoning
+- 🔴 Red (600K+): significant degradation, consider `/clear`
 
 Opus 4.6 loses ~2% effectiveness per 100K tokens. These thresholds apply to both Opus 4.6 and Sonnet 4.6 (same architecture).
 
