@@ -10,7 +10,7 @@ A rich, informative status bar for [Claude Code](https://claude.ai/claude-code) 
 
 | Segment | Example | Description |
 |---------|---------|-------------|
-| **Model** | `[⚡Opus 4.6 · high]` | Active model, ⚡ when fast mode is on (`/fast`), reasoning effort level |
+| **Model** | `[↯Opus 4.6 · high]` | Active model, ↯ when fast mode is on (`/fast`), reasoning effort level |
 | **Git branch** | `🚀 my-feature` | Current git branch with type emoji (see below) |
 | **Context** | `1M [██░░░░░░░░] 6% ~192p` | Context window size, usage bar, % used, estimated prompts remaining |
 | **Cache** | `Cache:99%` | Prompt cache hit rate (green ≥80%, yellow ≥50%, red <50%) |
