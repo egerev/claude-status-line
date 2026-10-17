@@ -20,7 +20,7 @@ Segments:
   7. Rate limits (5h / 7d) with color + estimated prompts remaining
 
 Data sources:
-  - stdin JSON from Claude Code (model, context, tokens, cost, rate_limits)
+  - stdin JSON from Claude Code (model, effort, fast_mode, context, tokens, cost, rate_limits)
   - .claude/data/sessions/{session_id}.json (created_at for duration)
   - ~/.claude/data/rate_history.jsonl (rate limit history for prompt estimates)
 """
@@ -419,9 +419,12 @@ def generate(data: dict) -> str:
     # Clean up verbose display name: "Opus 4.6 (1M context)" → "Opus 4.6"
     if "(" in model:
         model = model[:model.index("(")].strip()
-    # Reasoning effort: 1) parse from transcript (actual runtime value after /model),
-    # 2) fall back to CLAUDE_CODE_EFFORT_LEVEL env/settings, 3) legacy effortLevel key.
-    effort = _effort_from_transcript(data.get("transcript_path"))
+    # Reasoning effort: 1) stdin "effort.level" (current session value),
+    # 2) parse from transcript (older Claude Code without the stdin field),
+    # 3) CLAUDE_CODE_EFFORT_LEVEL env/settings, 4) legacy effortLevel key.
+    effort = (data.get("effort") or {}).get("level")
+    if not effort:
+        effort = _effort_from_transcript(data.get("transcript_path"))
     if not effort:
         effort = _get_env("CLAUDE_CODE_EFFORT_LEVEL")
     if not effort:
