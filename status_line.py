@@ -42,7 +42,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 CYAN = "\033[36m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
-RED = "\033[38;2;230;40;40m"  # truecolor red; ANSI 31 renders pinkish in some themes
+RED = "\033[31m"
 BRIGHT_RED = "\033[91m"
 CRIMSON = "\033[1;38;2;204;0;0m"  # bold deep red (truecolor) — critical
 BRIGHT_MAGENTA = "\033[95m"
