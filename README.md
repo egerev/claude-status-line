@@ -59,12 +59,14 @@ difference = used% - expected%
 - 🟢 Green: On track or under budget
 - 🟡 Yellow: Any amount ahead of schedule
 - 🔴 Red: More than 20% ahead of schedule — burning too fast
+- 🟥 Crimson (bold deep red, rgb 204,0,0): More than 35% ahead of schedule, or limit exhausted
 
 **Examples:**
 - 5h window, 4h elapsed, 80% used → 🟢 Green (expected: 80%, right on track)
 - 5h window, 1h elapsed, 80% used → 🔴 Red (expected: 20%, way ahead)
 - 7d window, 2d elapsed, 30% used → 🟢 Green (expected: 29%, perfect)
-- 7d window, 1d elapsed, 60% used → 🔴 Red (expected: 14%, burning fast)
+- 7d window, 1d elapsed, 60% used → 🟥 Crimson (expected: 14%, far ahead)
+- 7d window, 3d elapsed, 70% used → 🔴 Red (expected: 43%, burning fast)
 
 ### How prompt estimation works
 
