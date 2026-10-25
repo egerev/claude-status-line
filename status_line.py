@@ -42,8 +42,9 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 CYAN = "\033[36m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
-RED = "\033[31m"
+RED = "\033[38;2;230;40;40m"  # truecolor red; ANSI 31 renders pinkish in some themes
 BRIGHT_RED = "\033[91m"
+CRIMSON = "\033[1;38;2;204;0;0m"  # bold deep red (truecolor) — critical
 BRIGHT_MAGENTA = "\033[95m"
 DIM = "\033[90m"
 BRIGHT_WHITE = "\033[97m"
@@ -73,6 +74,7 @@ CTX_RED_TOKENS = 400_000
 # difference = used% - expected%
 RATE_PACE_YELLOW = 0   # any amount ahead of schedule → yellow
 RATE_PACE_RED = 20     # >20% ahead of schedule → red
+RATE_PACE_CRITICAL = 35  # >35% ahead of schedule → crimson
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +96,11 @@ def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float 
 
     Compares actual usage to expected linear usage based on elapsed time.
     Green = on track or under budget. Yellow = slightly ahead. Red = burning fast.
-    At 100% the limit is exhausted — always red regardless of pacing.
+    Crimson = far ahead of schedule.
+    At 100% the limit is exhausted — always crimson regardless of pacing.
     """
     if used_pct >= 100:
-        return RED
+        return CRIMSON
 
     if resets_at <= 0:
         # No reset data — fall back to simple thresholds
@@ -124,7 +127,9 @@ def rate_color_paced(used_pct: float, resets_at: float = 0, window_hours: float 
         return GREEN
     elif difference <= RATE_PACE_RED:
         return YELLOW
-    return RED
+    elif difference <= RATE_PACE_CRITICAL:
+        return RED
+    return CRIMSON
 
 
 def rate_bar(pct: float, color: str, width: int = 10) -> str:
